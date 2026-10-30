@@ -18,12 +18,6 @@ public final class AlpineMountManager {
     public static List<String> buildBindArguments() {
         List<String> args = new ArrayList<>();
         args.add("-b");
-        args.add("/dev");
-        args.add("-b");
-        args.add("/proc");
-        args.add("-b");
-        args.add("/sys");
-        args.add("-b");
         args.add("/sdcard:/sdcard");
         args.add("-b");
         args.add("/storage:/storage");

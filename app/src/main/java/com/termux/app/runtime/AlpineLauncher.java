@@ -10,10 +10,10 @@ import java.util.List;
  * Builds the PRoot command lines for Alpine. This is the ONE place the
  * argv lives, so an on-device failure can be fixed with a single patch.
  *
- * <p>Shipped argv (proot-distro style):</p>
+ * <p>Shipped argv (minimal argv, proven in NobiIDE via ProcessBuilder on
+ * this phone 2026-10-04, where apk worked):</p>
  * <pre>
- * proot -r &lt;rootfs&gt; -0 -b /dev -b /proc -b /sys
- *       -b /sdcard:/sdcard -b /storage:/storage -w /root
+ * proot -r &lt;rootfs&gt; -b /sdcard:/sdcard -b /storage:/storage -w /root
  *       /bin/sh -c "&lt;welcome&gt;; if [ -x /bin/bash ]; then exec /bin/bash --login; else ...; exec /bin/sh; fi"
  * </pre>
  * <p>The session shell runs through a {@code /bin/sh -c} wrapper so the
@@ -21,11 +21,12 @@ import java.util.List;
  * with {@code exec} (same PID, same PTY). The wrapper falls back to
  * {@code /bin/sh} when Bash is absent instead of exiting.</p>
  *
- * <p>Documented fallback (proven in NobiIDE via ProcessBuilder, NOT shipped
- * here): minimal argv without {@code -0} and without the
- * {@code /dev}/{@code /proc}/{@code /sys} binds, {@code /bin/sh} directly,
- * {@code /sdcard} and {@code /storage} binds only. If Sam's on-device test
- * fails with the shipped argv, try the minimal argv before anything else.</p>
+ * <p>History: M2 shipped a fuller argv with a fake-root flag and extra
+ * system binds. On Sam's phone (M2.1, 2026-10-31) steps 1-6 passed and
+ * the Bash one-shot failed at apk update with Permission denied opening
+ * the package index. M2.3 switches both the session and one-shot
+ * commands to this minimal argv, the only material difference from the
+ * proven NobiIDE argv, before trying anything else.</p>
  */
 public final class AlpineLauncher {
 
@@ -52,7 +53,6 @@ public final class AlpineLauncher {
         argv.add(proot);
         argv.add("-r");
         argv.add(AlpineInstaller.getRootfsDir(context).getAbsolutePath());
-        argv.add("-0");
         argv.addAll(AlpineMountManager.buildBindArguments());
         argv.add("-w");
         argv.add("/root");
@@ -77,7 +77,6 @@ public final class AlpineLauncher {
         argv.add(proot);
         argv.add("-r");
         argv.add(AlpineInstaller.getRootfsDir(context).getAbsolutePath());
-        argv.add("-0");
         argv.addAll(AlpineMountManager.buildBindArguments());
         argv.add("-w");
         argv.add("/root");
