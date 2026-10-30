@@ -4,6 +4,7 @@ import android.content.Context;
 import android.os.Build;
 import android.util.Log;
 
+import java.io.BufferedInputStream;
 import java.io.BufferedReader;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -13,6 +14,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
 import java.security.MessageDigest;
 import java.util.Locale;
 import java.util.Map;
@@ -20,19 +23,15 @@ import java.util.concurrent.TimeUnit;
 import java.util.zip.GZIPInputStream;
 
 /**
- * Verifies and extracts the bundled Alpine Linux minirootfs (shipped
- * inside the APK as an asset) into private app storage, then installs
- * Bash inside it with a one-shot PRoot run. No rootfs download happens
- * at runtime: the bundled asset is hashed and compared against the
- * bundled checksum file before extraction.
+ * Downloads, verifies and extracts the Alpine Linux minirootfs into private
+ * app storage, then installs Bash inside it with a one-shot PRoot run.
  *
  * <p>Adapted from the proven NobiIDE {@code LinuxInstaller} (PRoot + Alpine
  * 3.24.2, verified on device 2026-10-04): same download/extraction approach
  * (system tar first, pure-Java tar.gz fallback with symlink handling, zip-slip
  * guard) and same static resolv.conf for DNS. Differences, all deliberate:
- * Alpine is pinned to 3.24.3, the SHA-256 checksum is read from the bundled
- * checksum asset and the bundled tar.gz is hashed and verified before
- * extraction (never hardcoded as a Java constant, never skipped), Bash is
+ * Alpine is pinned to 3.24.3, the SHA-256 checksum is fetched at install time
+ * and verified before extraction (never hardcoded, never skipped), Bash is
  * installed via PRoot (minirootfs ships only BusyBox sh), and PRoot is never
  * downloaded at runtime — it must be the bundled native library.</p>
  *
@@ -47,16 +46,13 @@ public final class AlpineInstaller {
 
     public static final String ALPINE_VERSION = "3.24.3";
     public static final String ALPINE_ARCH = "aarch64";
-    /** Bundled rootfs asset name. The ".bin" suffix is deliberate: AAPT2 gunzips
-     *  ".tar.gz" assets at packaging time (stripping the extension and storing
-     *  the raw tar), which would break both the asset lookup and the hash
-     *  check. The ".bin" name keeps the gzip bytes intact in the APK. */
-    public static final String ALPINE_ASSET_PATH = "alpine/alpine-minirootfs-3.24.3-aarch64.bin";
-    /** Asset path of the bundled checksum file (first token is the expected SHA-256). */
-    public static final String ALPINE_CHECKSUM_ASSET_PATH = "alpine/alpine-minirootfs-3.24.3-aarch64.bin.sha256";
+    public static final String ALPINE_FILE_NAME = "alpine-minirootfs-3.24.3-aarch64.tar.gz";
+    public static final String ALPINE_URL =
+            "https://dl-cdn.alpinelinux.org/alpine/latest-stable/releases/aarch64/" + ALPINE_FILE_NAME;
 
     public static final String STEP_CHECK = "check";
     public static final String STEP_PROOT = "proot";
+    public static final String STEP_DOWNLOAD = "download";
     public static final String STEP_VERIFY = "verify";
     public static final String STEP_EXTRACT = "extract";
     public static final String STEP_REPOS = "repos";
@@ -104,6 +100,10 @@ public final class AlpineInstaller {
 
     public static File getRootfsDir(Context context) {
         return new File(getAlpineDir(context), "rootfs");
+    }
+
+    public static File getDownloadDir(Context context) {
+        return new File(getAlpineDir(context), "downloads");
     }
 
     public static File getMarkerFile(Context context) {
@@ -176,7 +176,7 @@ public final class AlpineInstaller {
         }
     }
 
-    /** Delete the rootfs and marker (reinstall). No download is kept: the rootfs is bundled in the APK. */
+    /** Delete the rootfs and marker (reinstall). The verified download is kept. */
     public static void deleteRootfs(Context context) {
         deleteRecursively(getRootfsDir(context));
         getMarkerFile(context).delete();
@@ -199,38 +199,50 @@ public final class AlpineInstaller {
         }
         report(listener, STEP_PROOT, 100, "PRoot ready");
 
-        // No runtime download: the rootfs ships inside the APK. Clean up any
-        // leftover download directory from the old download-based installer.
-        deleteRecursively(new File(getAlpineDir(context), "downloads"));
+        File downloadDir = getDownloadDir(context);
+        downloadDir.mkdirs();
+        File tarFile = new File(downloadDir, ALPINE_FILE_NAME);
 
-        // Step 3: verify the bundled asset. Hash the asset stream while
-        // copying it to a temporary file in the cache directory (single
-        // pass); the temporary copy is deleted after extraction, never kept.
-        report(listener, STEP_VERIFY, 0, "Verifying bundled Alpine");
+        // Fetch the matching checksum at install time. Never hardcoded.
         String expectedSha256;
-        File tarFile = new File(context.getCacheDir(), "alpine-rootfs.tar.gz");
         try {
-            expectedSha256 = readBundledChecksum(context);
-            String actualSha256 = copyAssetAndHash(context, tarFile, listener);
-            if (tarFile.length() < 1000000) {
-                tarFile.delete();
-                return InstallResult.failure(STEP_VERIFY,
-                        "The bundled Alpine file is too small (" + tarFile.length() + " bytes). Reinstall the app.");
-            }
-            if (!actualSha256.equals(expectedSha256)) {
-                tarFile.delete();
-                return InstallResult.failure(STEP_VERIFY,
-                        "Checksum mismatch for the bundled Alpine file. Reinstall the app.");
-            }
+            expectedSha256 = fetchChecksum();
         } catch (Exception e) {
-            Log.e(LOG_TAG, "Bundled Alpine verification failed", e);
+            Log.e(LOG_TAG, "Checksum fetch failed", e);
+            return InstallResult.failure(STEP_VERIFY,
+                    "Could not download the checksum file. Check your internet connection.");
+        }
+
+        // Step 3: download (skipped when a verified copy is already present).
+        if (tarFile.exists() && verifySha256(tarFile, expectedSha256)) {
+            report(listener, STEP_DOWNLOAD, 100, "Alpine download already present");
+        } else {
+            try {
+                if (tarFile.exists()) tarFile.delete();
+                downloadFile(ALPINE_URL, tarFile, listener);
+            } catch (Exception e) {
+                Log.e(LOG_TAG, "Download failed", e);
+                tarFile.delete();
+                return InstallResult.failure(STEP_DOWNLOAD,
+                        "Download failed: " + plainMessage(e));
+            }
+            if (!tarFile.exists() || tarFile.length() < 1000000) {
+                tarFile.delete();
+                return InstallResult.failure(STEP_DOWNLOAD,
+                        "Download failed: the file is too small (" + tarFile.length() + " bytes).");
+            }
+        }
+
+        // Step 4: verify checksum before extracting anything.
+        report(listener, STEP_VERIFY, 0, "Verifying checksum");
+        if (!verifySha256(tarFile, expectedSha256)) {
             tarFile.delete();
             return InstallResult.failure(STEP_VERIFY,
-                    "Could not read the bundled Alpine file: " + plainMessage(e));
+                    "Checksum mismatch. The download was deleted; please retry.");
         }
         report(listener, STEP_VERIFY, 100, "Checksum verified");
 
-        // Step 4: extract. A partial rootfs is deleted first.
+        // Step 5: extract. A partial rootfs is deleted first.
         report(listener, STEP_EXTRACT, 0, "Extracting root filesystem");
         File rootfsDir = getRootfsDir(context);
         deleteRecursively(rootfsDir);
@@ -239,12 +251,9 @@ public final class AlpineInstaller {
             extractTarGz(tarFile, rootfsDir);
         } catch (Exception e) {
             Log.e(LOG_TAG, "Extraction failed", e);
-            tarFile.delete();
             deleteRecursively(rootfsDir);
             return InstallResult.failure(STEP_EXTRACT, "Extraction failed: " + plainMessage(e));
         }
-        // The temporary copy is never kept.
-        tarFile.delete();
         File sh = new File(rootfsDir, "bin/sh");
         if (!sh.exists() && !new File(rootfsDir, "usr/bin/sh").exists()
                 && !new File(rootfsDir, "bin/busybox").exists()
@@ -255,7 +264,7 @@ public final class AlpineInstaller {
         }
         report(listener, STEP_EXTRACT, 100, "Root filesystem extracted");
 
-        // Step 5: repositories + DNS.
+        // Step 6: repositories + DNS.
         report(listener, STEP_REPOS, 0, "Setting up repositories");
         try {
             setupRootfs(context, rootfsDir);
@@ -265,7 +274,7 @@ public final class AlpineInstaller {
         }
         report(listener, STEP_REPOS, 100, "Repositories ready");
 
-        // Step 6: install Bash with a one-shot PRoot run.
+        // Step 7: install Bash with a one-shot PRoot run.
         report(listener, STEP_BASH, 0, "Installing Bash (apk update, apk add bash)");
         StringBuilder oneShotOutput = new StringBuilder();
         int exitCode;
@@ -347,60 +356,96 @@ public final class AlpineInstaller {
         return process.exitValue();
     }
 
-    /** Reads the expected SHA-256 (first token) from the bundled checksum asset. */
-    private static String readBundledChecksum(Context context) throws IOException {
-        InputStream in = context.getAssets().open(ALPINE_CHECKSUM_ASSET_PATH);
+    private static String fetchChecksum() throws IOException {
+        URL url = new URL(ALPINE_URL + ".sha256");
+        HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+        connection.setConnectTimeout(30000);
+        connection.setReadTimeout(30000);
+        connection.setInstanceFollowRedirects(true);
+        connection.setRequestProperty("User-Agent", "NobiAlpine");
+        int code = connection.getResponseCode();
+        if (code != HttpURLConnection.HTTP_OK) {
+            throw new IOException("Checksum file returned HTTP " + code);
+        }
+        BufferedReader reader = new BufferedReader(new InputStreamReader(connection.getInputStream(), "UTF-8"));
         try {
-            BufferedReader reader = new BufferedReader(new InputStreamReader(in, "UTF-8"));
             String line = reader.readLine();
-            if (line == null || line.trim().isEmpty()) throw new IOException("Empty bundled checksum file");
+            if (line == null || line.trim().isEmpty()) throw new IOException("Empty checksum file");
             String token = line.trim().split("\\s+")[0].toLowerCase(Locale.US);
-            if (token.length() != 64) throw new IOException("Unexpected bundled checksum format");
+            if (token.length() != 64) throw new IOException("Unexpected checksum format");
             return token;
         } finally {
-            in.close();
+            reader.close();
         }
     }
 
-    /**
-     * Copies the bundled rootfs asset to {@code dest} while computing its
-     * SHA-256 in a single pass. Returns the hex digest.
-     */
-    private static String copyAssetAndHash(Context context, File dest, ProgressListener listener) throws IOException {
-        MessageDigest digest;
+    private static boolean verifySha256(File file, String expectedHex) {
         try {
-            digest = MessageDigest.getInstance("SHA-256");
-        } catch (Exception e) {
-            throw new IOException("SHA-256 is not available", e);
-        }
-        InputStream in = context.getAssets().open(ALPINE_ASSET_PATH);
-        try {
-            OutputStream out = new FileOutputStream(dest);
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            InputStream in = new BufferedInputStream(new FileInputStream(file));
             try {
                 byte[] buffer = new byte[32768];
-                long copied = 0;
                 int n;
-                while ((n = in.read(buffer)) != -1) {
-                    digest.update(buffer, 0, n);
-                    out.write(buffer, 0, n);
-                    copied += n;
-                    report(listener, STEP_VERIFY, -1, String.format(Locale.US,
-                            "Verifying bundled Alpine %.1f MB", copied / 1048576.0));
-                }
-                out.flush();
+                while ((n = in.read(buffer)) != -1) digest.update(buffer, 0, n);
             } finally {
-                out.close();
+                in.close();
             }
-        } finally {
-            in.close();
+            return toHex(digest.digest()).equals(expectedHex.toLowerCase(Locale.US));
+        } catch (Exception e) {
+            Log.e(LOG_TAG, "Checksum verification error", e);
+            return false;
         }
-        return toHex(digest.digest());
     }
 
     private static String toHex(byte[] bytes) {
         StringBuilder sb = new StringBuilder(bytes.length * 2);
         for (byte b : bytes) sb.append(String.format(Locale.US, "%02x", b));
         return sb.toString();
+    }
+
+    private static void downloadFile(String urlString, File dest, final ProgressListener listener) throws IOException {
+        URL url = new URL(urlString);
+        HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+        connection.setConnectTimeout(30000);
+        connection.setReadTimeout(60000);
+        connection.setInstanceFollowRedirects(true);
+        connection.setRequestProperty("User-Agent", "NobiAlpine");
+        int code = connection.getResponseCode();
+        if (code != HttpURLConnection.HTTP_OK) {
+            throw new IOException("Download returned HTTP " + code);
+        }
+        long total = connection.getContentLengthLong();
+        InputStream input = connection.getInputStream();
+        try {
+            OutputStream output = new FileOutputStream(dest);
+            try {
+                byte[] buffer = new byte[32768];
+                long downloaded = 0;
+                int n;
+                int lastPercent = -1;
+                while ((n = input.read(buffer)) != -1) {
+                    output.write(buffer, 0, n);
+                    downloaded += n;
+                    if (total > 0) {
+                        int percent = (int) (downloaded * 100 / total);
+                        if (percent != lastPercent) {
+                            lastPercent = percent;
+                            String detail = String.format(Locale.US, "Downloaded %.1f / %.1f MB",
+                                    downloaded / 1048576.0, total / 1048576.0);
+                            report(listener, STEP_DOWNLOAD, percent, detail);
+                        }
+                    } else {
+                        report(listener, STEP_DOWNLOAD, -1, String.format(Locale.US,
+                                "Downloaded %.1f MB", downloaded / 1048576.0));
+                    }
+                }
+                output.flush();
+            } finally {
+                output.close();
+            }
+        } finally {
+            input.close();
+        }
     }
 
     private static void extractTarGz(File tarGz, File destDir) throws IOException, InterruptedException {
