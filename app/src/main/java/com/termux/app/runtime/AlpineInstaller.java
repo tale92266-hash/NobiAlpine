@@ -47,11 +47,13 @@ public final class AlpineInstaller {
 
     public static final String ALPINE_VERSION = "3.24.3";
     public static final String ALPINE_ARCH = "aarch64";
-    public static final String ALPINE_FILE_NAME = "alpine-minirootfs-3.24.3-aarch64.tar.gz";
-    /** Asset path of the bundled rootfs tarball (placed there at build time, hash-verified). */
-    public static final String ALPINE_ASSET_PATH = "alpine/" + ALPINE_FILE_NAME;
+    /** Bundled rootfs asset name. The ".bin" suffix is deliberate: AAPT2 gunzips
+     *  ".tar.gz" assets at packaging time (stripping the extension and storing
+     *  the raw tar), which would break both the asset lookup and the hash
+     *  check. The ".bin" name keeps the gzip bytes intact in the APK. */
+    public static final String ALPINE_ASSET_PATH = "alpine/alpine-minirootfs-3.24.3-aarch64.bin";
     /** Asset path of the bundled checksum file (first token is the expected SHA-256). */
-    public static final String ALPINE_CHECKSUM_ASSET_PATH = "alpine/" + ALPINE_FILE_NAME + ".sha256";
+    public static final String ALPINE_CHECKSUM_ASSET_PATH = "alpine/alpine-minirootfs-3.24.3-aarch64.bin.sha256";
 
     public static final String STEP_CHECK = "check";
     public static final String STEP_PROOT = "proot";

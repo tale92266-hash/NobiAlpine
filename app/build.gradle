@@ -127,8 +127,8 @@ dependencies {
 }
 
 def alpineAssetDir = new File(projectDir, "src/main/assets/alpine")
-def alpineAssetFile = new File(alpineAssetDir, "alpine-minirootfs-3.24.3-aarch64.tar.gz")
-def alpineChecksumFile = new File(alpineAssetDir, "alpine-minirootfs-3.24.3-aarch64.tar.gz.sha256")
+def alpineAssetFile = new File(alpineAssetDir, "alpine-minirootfs-3.24.3-aarch64.bin")
+def alpineChecksumFile = new File(alpineAssetDir, "alpine-minirootfs-3.24.3-aarch64.bin.sha256")
 
 // Downloads the pinned Alpine minirootfs + checksum into src/main/assets at
 // build time and verifies the SHA-256 before the build proceeds. The 4 MB
