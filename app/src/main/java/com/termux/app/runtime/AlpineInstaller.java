@@ -50,6 +50,18 @@ public final class AlpineInstaller {
     public static final String ALPINE_URL =
             "https://dl-cdn.alpinelinux.org/alpine/latest-stable/releases/aarch64/" + ALPINE_FILE_NAME;
 
+    /** Termux-style welcome text (see TERMUX_STYLE_SPEC.md). Written to /etc/motd on every fresh extract. */
+    private static final String MOTD_TEXT =
+            "Welcome to Nobi Alpine!\n"
+                    + "Docs:       https://termux.dev/docs\n"
+                    + "Donate:     https://termux.dev/donate\n"
+                    + "Community:  https://termux.dev/community\n"
+                    + "Working with packages:\n"
+                    + " - Search:  apk search <query>\n"
+                    + " - Install: apk add <package>\n"
+                    + " - Upgrade: apk upgrade\n"
+                    + "Report issues at https://termux.dev/issues\n";
+
     public static final String STEP_CHECK = "check";
     public static final String STEP_PROOT = "proot";
     public static final String STEP_DOWNLOAD = "download";
@@ -335,6 +347,45 @@ public final class AlpineInstaller {
         File resolvConf = new File(rootfs, "etc/resolv.conf");
         resolvConf.getParentFile().mkdirs();
         writeFileUtf8(resolvConf, "nameserver 8.8.8.8\nnameserver 8.8.4.4\n");
+
+        // Termux-style startup (M2.4, see TERMUX_STYLE_SPEC.md): the
+        // welcome text lives in /etc/motd (app-owned, rewritten on every
+        // fresh extract) and is printed for every login shell by
+        // /etc/profile.d/nobi-motd.sh — Alpine's /etc/profile sources
+        // /etc/profile.d/*.sh. The launcher prints no welcome text of
+        // its own, so the MOTD appears exactly once per new session.
+        writeFileUtf8(new File(rootfs, "etc/motd"), MOTD_TEXT);
+        File profileD = new File(rootfs, "etc/profile.d");
+        profileD.mkdirs();
+        writeFileUtf8(new File(profileD, "nobi-motd.sh"),
+                "if [ -f /etc/motd ]; then cat /etc/motd; fi\n");
+
+        // Default prompt, Termux-style (`~ $`): a plain PS1 in the
+        // user's .bashrc. The file is user-owned — only create it when
+        // absent, never overwrite an existing .bashrc.
+        File bashrc = new File(rootfs, "root/.bashrc");
+        if (!bashrc.exists()) {
+            writeFileUtf8(bashrc, "PS1='\\w \\$ '\n");
+        }
+
+        // Login shells read ~/.bash_profile, not ~/.bashrc, so make
+        // sure the profile sources .bashrc (appended only when missing,
+        // never duplicated on reinstall).
+        ensureBashProfileSourcesBashrc(new File(rootfs, "root/.bash_profile"));
+    }
+
+    /** Append the .bashrc-sourcing line to ~/.bash_profile only when it is not already there. */
+    private static void ensureBashProfileSourcesBashrc(File bashProfile) throws IOException {
+        String sourceLine = "if [ -f ~/.bashrc ]; then . ~/.bashrc; fi";
+        String existing = readFileUtf8(bashProfile);
+        if (existing != null && existing.contains(".bashrc")) return;
+        StringBuilder content = new StringBuilder();
+        if (existing != null && !existing.isEmpty()) {
+            content.append(existing);
+            if (!existing.endsWith("\n")) content.append("\n");
+        }
+        content.append(sourceLine).append("\n");
+        writeFileUtf8(bashProfile, content.toString());
     }
 
     /** One-shot PRoot run: {@code /bin/sh -c <command>} inside the rootfs. Returns the exit code. */

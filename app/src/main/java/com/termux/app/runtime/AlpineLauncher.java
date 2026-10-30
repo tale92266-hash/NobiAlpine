@@ -14,28 +14,31 @@ import java.util.List;
  * this phone 2026-10-04, where apk worked):</p>
  * <pre>
  * proot -r &lt;rootfs&gt; -b /sdcard:/sdcard -b /storage:/storage -w /root
- *       /bin/sh -c "&lt;welcome&gt;; if [ -x /bin/bash ]; then exec /bin/bash --login; else ...; exec /bin/sh; fi"
+ *       /bin/sh -c "if [ -x /bin/bash ]; then exec /bin/bash --login; else exec /bin/sh; fi"
  * </pre>
- * <p>The session shell runs through a {@code /bin/sh -c} wrapper so the
- * short welcome block prints before the login shell replaces the wrapper
- * with {@code exec} (same PID, same PTY). The wrapper falls back to
- * {@code /bin/sh} when Bash is absent instead of exiting.</p>
+ * <p>The session shell runs through a {@code /bin/sh -c} wrapper that
+ * replaces itself with the login shell via {@code exec} (same PID, same
+ * PTY). The wrapper prints no text of its own: the Termux-style welcome
+ * (MOTD) is printed for every login shell by
+ * {@code /etc/profile.d/nobi-motd.sh} (written by the installer), and
+ * the Termux-style prompt ({@code ~ $}) comes from the default
+ * {@code ~/.bashrc} PS1 (see TERMUX_STYLE_SPEC.md). The wrapper falls
+ * back to {@code /bin/sh} when Bash is absent instead of exiting.</p>
  *
  * <p>History: M2 shipped a fuller argv with a fake-root flag and extra
  * system binds. On Sam's phone (M2.1, 2026-10-31) steps 1-6 passed and
  * the Bash one-shot failed at apk update with Permission denied opening
  * the package index. M2.3 switches both the session and one-shot
  * commands to this minimal argv, the only material difference from the
- * proven NobiIDE argv, before trying anything else.</p>
+ * proven NobiIDE argv, before trying anything else. M2.4 removes the
+ * launcher welcome snippet so the MOTD is the only welcome text,
+ * exactly once per new session.</p>
  */
 public final class AlpineLauncher {
 
-    private static final String WELCOME_SNIPPET =
-            "printf 'Alpine Linux 3.24.3 (aarch64) via PRoot\\n"
-                    + "Use apk update and apk add to install packages.\\n"
-                    + "Shared storage: /sdcard\\n'; "
-                    + "if [ -x /bin/bash ]; then exec /bin/bash --login; "
-                    + "else printf 'Bash is not installed. Using sh.\\n'; exec /bin/sh; fi";
+    /** Session fallback: Bash when installed, otherwise BusyBox sh. No printed text — the Termux-style welcome (MOTD) is printed by /etc/profile.d/nobi-motd.sh for login shells (see TERMUX_STYLE_SPEC.md). */
+    private static final String SESSION_SHELL_COMMAND =
+            "if [ -x /bin/bash ]; then exec /bin/bash --login; else exec /bin/sh; fi";
 
     private AlpineLauncher() {
     }
@@ -58,7 +61,7 @@ public final class AlpineLauncher {
         argv.add("/root");
         argv.add("/bin/sh");
         argv.add("-c");
-        argv.add(WELCOME_SNIPPET);
+        argv.add(SESSION_SHELL_COMMAND);
         return argv.toArray(new String[0]);
     }
 
