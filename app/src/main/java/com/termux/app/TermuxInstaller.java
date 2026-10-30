@@ -31,12 +31,12 @@ import static com.termux.shared.termux.TermuxConstants.TERMUX_PREFIX_DIR_PATH;
  * the Alpine installer itself arrives in M2. Once the setup screen has been
  * seen, the terminal is opened directly.
  */
-final class TermuxInstaller {
+public final class TermuxInstaller {
 
     private static final String LOG_TAG = "TermuxInstaller";
 
-    static final String NOBI_ALPINE_PREFS = "nobi_alpine";
-    static final String NOBI_ALPINE_SETUP_SEEN = "nobi_alpine_setup_seen";
+    public static final String NOBI_ALPINE_PREFS = "nobi_alpine";
+    public static final String NOBI_ALPINE_SETUP_SEEN = "nobi_alpine_setup_seen";
 
     /** Performs Alpine setup gating if necessary. */
     static void setupBootstrapIfNeeded(final Activity activity, final Runnable whenDone) {
