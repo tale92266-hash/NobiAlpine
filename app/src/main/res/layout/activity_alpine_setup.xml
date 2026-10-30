@@ -1,7 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
-    android:layout_height="match_parent">
+    android:layout_height="match_parent"
+    android:background="#000000">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -11,6 +12,7 @@
         android:padding="24dp">
 
         <TextView
+            android:textColor="#FFFFFF"
             android:id="@+id/alpine_setup_title"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
@@ -18,14 +20,16 @@
             android:textSize="28sp" />
 
         <TextView
+            android:textColor="#FFFFFF"
             android:id="@+id/alpine_setup_version"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
-            android:text="Nobi Alpine 0.2.0 (M2)"
+            android:text="Nobi Alpine 0.2.1 (M2.1)"
             android:textSize="16sp" />
 
         <TextView
+            android:textColor="#FFFFFF"
             android:id="@+id/alpine_setup_description"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
@@ -34,6 +38,7 @@
             android:textSize="16sp" />
 
         <TextView
+            android:textColor="#FFFFFF"
             android:id="@+id/alpine_setup_step_check"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
@@ -43,6 +48,7 @@
             android:textSize="16sp" />
 
         <TextView
+            android:textColor="#FFFFFF"
             android:id="@+id/alpine_setup_step_proot"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
@@ -52,6 +58,7 @@
             android:textSize="16sp" />
 
         <TextView
+            android:textColor="#FFFFFF"
             android:id="@+id/alpine_setup_step_download"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
@@ -61,6 +68,7 @@
             android:textSize="16sp" />
 
         <TextView
+            android:textColor="#FFFFFF"
             android:id="@+id/alpine_setup_step_verify"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
@@ -70,6 +78,7 @@
             android:textSize="16sp" />
 
         <TextView
+            android:textColor="#FFFFFF"
             android:id="@+id/alpine_setup_step_extract"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
@@ -79,6 +88,7 @@
             android:textSize="16sp" />
 
         <TextView
+            android:textColor="#FFFFFF"
             android:id="@+id/alpine_setup_step_repos"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
@@ -88,6 +98,7 @@
             android:textSize="16sp" />
 
         <TextView
+            android:textColor="#FFFFFF"
             android:id="@+id/alpine_setup_step_bash"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
@@ -97,6 +108,7 @@
             android:textSize="16sp" />
 
         <TextView
+            android:textColor="#FFFFFF"
             android:id="@+id/alpine_setup_progress"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
@@ -105,6 +117,7 @@
             android:textSize="14sp" />
 
         <TextView
+            android:textColor="#FF9E9E"
             android:id="@+id/alpine_setup_error"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
