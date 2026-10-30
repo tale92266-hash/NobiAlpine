@@ -9,6 +9,7 @@ import android.system.Os;
 
 import com.termux.R;
 import com.termux.app.activities.AlpineSetupActivity;
+import com.termux.app.runtime.AlpineInstaller;
 import com.termux.app.utils.CrashUtils;
 import com.termux.shared.file.FileUtils;
 import com.termux.shared.file.TermuxFileUtils;
@@ -26,10 +27,12 @@ import static com.termux.shared.termux.TermuxConstants.TERMUX_PREFIX_DIR_PATH;
 /**
  * Nobi Alpine setup gate.
  * <p/>
- * M1: the Termux bootstrap installation is removed. There is no $PREFIX and
- * no bootstrap zip. On first run the Alpine setup screen is shown instead;
- * the Alpine installer itself arrives in M2. Once the setup screen has been
- * seen, the terminal is opened directly.
+ * M2: the Termux bootstrap installation is removed. There is no $PREFIX and
+ * no bootstrap zip. The terminal opens directly only when Alpine is fully
+ * installed (marker present, shell in the rootfs, PRoot present); otherwise
+ * the Alpine setup screen is shown so the user can install or reinstall
+ * Alpine. The old "setup seen" flag is no longer the gate — a missing or
+ * corrupt rootfs always returns the user to setup.
  */
 public final class TermuxInstaller {
 
@@ -69,15 +72,14 @@ public final class TermuxInstaller {
             return;
         }
 
-        SharedPreferences prefs = activity.getSharedPreferences(NOBI_ALPINE_PREFS, Context.MODE_PRIVATE);
-        if (prefs.getBoolean(NOBI_ALPINE_SETUP_SEEN, false)) {
+        if (AlpineInstaller.isInstalled(activity)) {
             whenDone.run();
             return;
         }
 
-        // First run: show the Alpine setup screen. It sets the flag and
-        // relaunches TermuxActivity when the user taps "Open Terminal".
-        // whenDone is intentionally NOT called here.
+        // Alpine is missing or invalid: show the setup screen so the user
+        // can install (or reinstall) it. It relaunches TermuxActivity when
+        // the install succeeds. whenDone is intentionally NOT called here.
         activity.startActivity(new Intent(activity, AlpineSetupActivity.class));
     }
 

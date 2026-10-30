@@ -22,6 +22,9 @@ import android.widget.ArrayAdapter;
 import androidx.annotation.Nullable;
 
 import com.termux.R;
+import com.termux.app.runtime.AlpineInstaller;
+import com.termux.app.runtime.AlpineLauncher;
+import com.termux.app.runtime.AlpineShellEnvironmentClient;
 import com.termux.app.settings.properties.TermuxAppSharedProperties;
 import com.termux.app.terminal.TermuxTerminalSessionClient;
 import com.termux.app.utils.PluginUtils;
@@ -46,6 +49,7 @@ import com.termux.terminal.TerminalEmulator;
 import com.termux.terminal.TerminalSession;
 import com.termux.terminal.TerminalSessionClient;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -525,7 +529,32 @@ public final class TermuxService extends Service implements TermuxTask.TermuxTas
         // Otherwise if command was manually started by the user like by adding a new terminal session,
         // then no need to set stdout
         executionCommand.terminalTranscriptRows = getTerminalTranscriptRows();
-        TermuxSession newTermuxSession = TermuxSession.execute(this, executionCommand, getTermuxTerminalSessionClient(), this, new TermuxShellEnvironmentClient(), sessionName, executionCommand.isPluginExecutionCommand);
+
+        // Nobi Alpine: default sessions (no explicit executable, not
+        // failsafe) run inside Alpine via PRoot when Alpine is installed.
+        // Plugin execution commands (explicit executable) and failsafe
+        // sessions keep the Termux environment and /system/bin/sh fallback.
+        // The JNI subprocess does chdir(cwd) on the host before exec, so
+        // the working directory must be a real host directory: keep the
+        // requested one only when it exists on the host, otherwise use
+        // the Alpine host home.
+        com.termux.shared.shell.ShellEnvironmentClient shellEnvironmentClient = new TermuxShellEnvironmentClient();
+        if (!executionCommand.isFailsafe && executionCommand.executable == null
+                && AlpineInstaller.isInstalled(this)) {
+            String prootPath = AlpineInstaller.getProotPath(this);
+            if (prootPath != null) {
+                executionCommand.executable = prootPath;
+                executionCommand.arguments = AlpineLauncher.buildSessionArguments(this);
+                String hostCwd = executionCommand.workingDirectory;
+                if (hostCwd == null || hostCwd.isEmpty() || !new File(hostCwd).isDirectory()) {
+                    hostCwd = AlpineInstaller.getHostHomeDir(this).getAbsolutePath();
+                }
+                executionCommand.workingDirectory = hostCwd;
+                shellEnvironmentClient = new AlpineShellEnvironmentClient();
+            }
+        }
+
+        TermuxSession newTermuxSession = TermuxSession.execute(this, executionCommand, getTermuxTerminalSessionClient(), this, shellEnvironmentClient, sessionName, executionCommand.isPluginExecutionCommand);
         if (newTermuxSession == null) {
             Logger.logError(LOG_TAG, "Failed to execute new TermuxSession command for:\n" + executionCommand.getCommandIdAndLabelLogString());
             // If the execution command was started for a plugin, then process the error

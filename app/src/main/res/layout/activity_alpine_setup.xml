@@ -1,47 +1,133 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    android:gravity="center_vertical"
-    android:orientation="vertical"
-    android:padding="24dp">
+    android:layout_height="match_parent">
 
-    <TextView
-        android:id="@+id/alpine_setup_title"
-        android:layout_width="wrap_content"
+    <LinearLayout
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Nobi Alpine"
-        android:textSize="28sp" />
+        android:gravity="center_vertical"
+        android:orientation="vertical"
+        android:padding="24dp">
 
-    <TextView
-        android:id="@+id/alpine_setup_version"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="8dp"
-        android:text="Nobi Alpine 0.1.0 (M1)"
-        android:textSize="16sp" />
+        <TextView
+            android:id="@+id/alpine_setup_title"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Nobi Alpine"
+            android:textSize="28sp" />
 
-    <TextView
-        android:id="@+id/alpine_setup_description"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="16dp"
-        android:text="M1 placeholder: this build proves the new app identity and the setup flow. The Alpine Linux installer arrives in M2."
-        android:textSize="16sp" />
+        <TextView
+            android:id="@+id/alpine_setup_version"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="Nobi Alpine 0.2.0 (M2)"
+            android:textSize="16sp" />
 
-    <TextView
-        android:id="@+id/alpine_setup_checklist"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="16dp"
-        android:text="Alpine setup steps will appear here in M2: download, checksum verification, extraction, and Bash setup."
-        android:textSize="16sp" />
+        <TextView
+            android:id="@+id/alpine_setup_description"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:text="Alpine Linux will be downloaded and set up inside this app. About 4 MB download, then packages install on demand with apk. PRoot simulates root only; no systemd or Docker."
+            android:textSize="16sp" />
 
-    <Button
-        android:id="@+id/alpine_setup_open_terminal"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="24dp"
-        android:text="Open Terminal" />
+        <TextView
+            android:id="@+id/alpine_setup_step_check"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="24dp"
+            android:alpha="0.5"
+            android:text="Checking device (arm64)"
+            android:textSize="16sp" />
 
-</LinearLayout>
+        <TextView
+            android:id="@+id/alpine_setup_step_proot"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:alpha="0.5"
+            android:text="Checking PRoot"
+            android:textSize="16sp" />
+
+        <TextView
+            android:id="@+id/alpine_setup_step_download"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:alpha="0.5"
+            android:text="Downloading Alpine 3.24.3"
+            android:textSize="16sp" />
+
+        <TextView
+            android:id="@+id/alpine_setup_step_verify"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:alpha="0.5"
+            android:text="Verifying checksum"
+            android:textSize="16sp" />
+
+        <TextView
+            android:id="@+id/alpine_setup_step_extract"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:alpha="0.5"
+            android:text="Extracting root filesystem"
+            android:textSize="16sp" />
+
+        <TextView
+            android:id="@+id/alpine_setup_step_repos"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:alpha="0.5"
+            android:text="Setting up repositories"
+            android:textSize="16sp" />
+
+        <TextView
+            android:id="@+id/alpine_setup_step_bash"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:alpha="0.5"
+            android:text="Installing Bash"
+            android:textSize="16sp" />
+
+        <TextView
+            android:id="@+id/alpine_setup_progress"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:text=""
+            android:textSize="14sp" />
+
+        <TextView
+            android:id="@+id/alpine_setup_error"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text=""
+            android:textSize="14sp"
+            android:visibility="gone" />
+
+        <Button
+            android:id="@+id/alpine_setup_install"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="24dp"
+            android:text="Install Alpine" />
+
+        <Button
+            android:id="@+id/alpine_setup_retry"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:text="Retry"
+            android:visibility="gone" />
+
+    </LinearLayout>
+
+</ScrollView>
