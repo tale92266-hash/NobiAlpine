@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:gravity="center_vertical"
+    android:orientation="vertical"
+    android:padding="24dp">
+
+    <TextView
+        android:id="@+id/alpine_setup_title"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Nobi Alpine"
+        android:textSize="28sp" />
+
+    <TextView
+        android:id="@+id/alpine_setup_version"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:text="Nobi Alpine 0.1.0 (M1)"
+        android:textSize="16sp" />
+
+    <TextView
+        android:id="@+id/alpine_setup_description"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:text="M1 placeholder: this build proves the new app identity and the setup flow. The Alpine Linux installer arrives in M2."
+        android:textSize="16sp" />
+
+    <TextView
+        android:id="@+id/alpine_setup_checklist"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:text="Alpine setup steps will appear here in M2: download, checksum verification, extraction, and Bash setup."
+        android:textSize="16sp" />
+
+    <Button
+        android:id="@+id/alpine_setup_open_terminal"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="24dp"
+        android:text="Open Terminal" />
+
+</LinearLayout>
