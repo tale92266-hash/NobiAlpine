@@ -30,8 +30,8 @@ android {
         applicationId "com.nobi.alpine"
         minSdkVersion project.properties.minSdkVersion.toInteger()
         targetSdkVersion project.properties.targetSdkVersion.toInteger()
-        versionCode 3
-        versionName "0.2.1"
+        versionCode 4
+        versionName "0.2.2"
 
         if (appVersionName) versionName = appVersionName
         validateVersionName(versionName)
@@ -124,6 +124,83 @@ android {
 dependencies {
     testImplementation "junit:junit:4.13.2"
     testImplementation "org.robolectric:robolectric:4.4"
+}
+
+def alpineAssetDir = new File(projectDir, "src/main/assets/alpine")
+def alpineAssetFile = new File(alpineAssetDir, "alpine-minirootfs-3.24.3-aarch64.tar.gz")
+def alpineChecksumFile = new File(alpineAssetDir, "alpine-minirootfs-3.24.3-aarch64.tar.gz.sha256")
+
+// Downloads the pinned Alpine minirootfs + checksum into src/main/assets at
+// build time and verifies the SHA-256 before the build proceeds. The 4 MB
+// binary is deliberately kept OUT of git: the runner fetches it fresh on
+// every build and the build FAILS on any checksum mismatch. If valid
+// files are already present (e.g. a local rebuild), the download is skipped.
+task downloadAlpineAssets {
+    outputs.upToDateWhen { false }
+    doLast {
+        def alpineUrl = "https://dl-cdn.alpinelinux.org/alpine/latest-stable/releases/aarch64/alpine-minirootfs-3.24.3-aarch64.tar.gz"
+        alpineAssetDir.mkdirs()
+
+        // Checksum file first: its first token is the expected hash.
+        def checksumConnection = new URL(alpineUrl + ".sha256").openConnection()
+        checksumConnection.setInstanceFollowRedirects(true)
+        checksumConnection.setRequestProperty("User-Agent", "NobiAlpine-build")
+        checksumConnection.setConnectTimeout(30000)
+        checksumConnection.setReadTimeout(30000)
+        if (checksumConnection.getResponseCode() != 200) {
+            throw new GradleException("Alpine checksum file returned HTTP " + checksumConnection.getResponseCode())
+        }
+        def checksumText = checksumConnection.getInputStream().getText("UTF-8")
+        def expected = checksumText.trim().split("\\s+")[0].toLowerCase()
+        if (expected.length() != 64) {
+            throw new GradleException("Unexpected Alpine checksum format: " + checksumText.trim())
+        }
+
+        def toHexChecksum = { byte[] digestBytes ->
+            def hex = new BigInteger(1, digestBytes).toString(16)
+            while (hex.length() < 64) { hex = "0" + hex }
+            return hex
+        }
+
+        if (alpineAssetFile.exists() && alpineChecksumFile.exists()) {
+            def digest = java.security.MessageDigest.getInstance("SHA-256")
+            digest.update(alpineAssetFile.bytes)
+            if (toHexChecksum(digest.digest()) == expected) {
+                logger.quiet("Alpine asset already present with matching checksum, skipping download.")
+                alpineChecksumFile.text = checksumText
+                return
+            }
+            logger.quiet("Existing Alpine asset has a wrong hash, re-downloading.")
+        }
+
+        logger.quiet("Downloading " + alpineUrl + " ...")
+        def connection = new URL(alpineUrl).openConnection()
+        connection.setInstanceFollowRedirects(true)
+        connection.setRequestProperty("User-Agent", "NobiAlpine-build")
+        connection.setConnectTimeout(30000)
+        connection.setReadTimeout(120000)
+        if (connection.getResponseCode() != 200) {
+            throw new GradleException("Alpine download returned HTTP " + connection.getResponseCode())
+        }
+        alpineAssetFile.withOutputStream { out ->
+            out << connection.getInputStream()
+        }
+        def digest = java.security.MessageDigest.getInstance("SHA-256")
+        digest.update(alpineAssetFile.bytes)
+        def actual = toHexChecksum(digest.digest())
+        if (actual != expected) {
+            alpineAssetFile.delete()
+            throw new GradleException("Alpine checksum mismatch: expected " + expected + ", actual " + actual)
+        }
+        alpineChecksumFile.text = checksumText
+        logger.quiet("Alpine asset verified (" + alpineAssetFile.length() + " bytes, sha256 " + actual + ").")
+    }
+}
+
+afterEvaluate {
+    tasks.matching { Task task -> task.name.startsWith("merge") && task.name.endsWith("Assets") }.configureEach {
+        dependsOn(downloadAlpineAssets)
+    }
 }
 
 task versionName {

@@ -50,15 +50,13 @@ public final class AlpineSetupActivity extends Activity {
 
         stepLabels.put(AlpineInstaller.STEP_CHECK, "Checking device (arm64)");
         stepLabels.put(AlpineInstaller.STEP_PROOT, "Checking PRoot");
-        stepLabels.put(AlpineInstaller.STEP_DOWNLOAD, "Downloading Alpine 3.24.3");
-        stepLabels.put(AlpineInstaller.STEP_VERIFY, "Verifying checksum");
+        stepLabels.put(AlpineInstaller.STEP_VERIFY, "Verifying bundled Alpine");
         stepLabels.put(AlpineInstaller.STEP_EXTRACT, "Extracting root filesystem");
         stepLabels.put(AlpineInstaller.STEP_REPOS, "Setting up repositories");
         stepLabels.put(AlpineInstaller.STEP_BASH, "Installing Bash");
 
         stepViews.put(AlpineInstaller.STEP_CHECK, (TextView) findViewById(R.id.alpine_setup_step_check));
         stepViews.put(AlpineInstaller.STEP_PROOT, (TextView) findViewById(R.id.alpine_setup_step_proot));
-        stepViews.put(AlpineInstaller.STEP_DOWNLOAD, (TextView) findViewById(R.id.alpine_setup_step_download));
         stepViews.put(AlpineInstaller.STEP_VERIFY, (TextView) findViewById(R.id.alpine_setup_step_verify));
         stepViews.put(AlpineInstaller.STEP_EXTRACT, (TextView) findViewById(R.id.alpine_setup_step_extract));
         stepViews.put(AlpineInstaller.STEP_REPOS, (TextView) findViewById(R.id.alpine_setup_step_repos));

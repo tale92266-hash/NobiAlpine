@@ -25,7 +25,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
-            android:text="Nobi Alpine 0.2.1 (M2.1)"
+            android:text="Nobi Alpine 0.2.2 (M2.2)"
             android:textSize="16sp" />
 
         <TextView
@@ -34,7 +34,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="16dp"
-            android:text="Alpine Linux will be downloaded and set up inside this app. About 4 MB download, then packages install on demand with apk. PRoot simulates root only; no systemd or Docker."
+            android:text="Alpine Linux is bundled in this app (about 4 MB) and set up inside this app. Packages install on demand with apk. PRoot simulates root only; no systemd or Docker."
             android:textSize="16sp" />
 
         <TextView
@@ -59,22 +59,12 @@
 
         <TextView
             android:textColor="#FFFFFF"
-            android:id="@+id/alpine_setup_step_download"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:alpha="0.5"
-            android:text="Downloading Alpine 3.24.3"
-            android:textSize="16sp" />
-
-        <TextView
-            android:textColor="#FFFFFF"
             android:id="@+id/alpine_setup_step_verify"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
             android:alpha="0.5"
-            android:text="Verifying checksum"
+            android:text="Verifying bundled Alpine"
             android:textSize="16sp" />
 
         <TextView
