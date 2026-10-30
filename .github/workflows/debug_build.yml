@@ -16,15 +16,15 @@ jobs:
       - name: Clone repository
         uses: actions/checkout@v4
 
-      - name: Set up JDK 11
+      - name: Set up JDK 17 for sdkmanager
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: "11"
+          java-version: "17"
 
       - name: Install Android SDK 30 and NDK 22
         run: |
-          echo "y" | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-30" "build-tools;30.0.3" "ndk;22.1.7171670"
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-30" "build-tools;30.0.3" "ndk;22.1.7171670"
           echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk/22.1.7171670" >> "$GITHUB_ENV"
 
       - name: Restore signing keystore
@@ -44,6 +44,12 @@ jobs:
           else
             echo "No fixed signing keystore secret set; falling back to dev keystore."
           fi
+
+      - name: Set up JDK 11 for Gradle
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "11"
 
       - name: Build APKs
         shell: bash {0}
