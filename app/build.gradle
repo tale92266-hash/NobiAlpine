@@ -30,8 +30,8 @@ android {
         applicationId "com.nobi.alpine"
         minSdkVersion project.properties.minSdkVersion.toInteger()
         targetSdkVersion project.properties.targetSdkVersion.toInteger()
-        versionCode 5
-        versionName "0.2.3"
+        versionCode 6
+        versionName "0.2.4"
 
         if (appVersionName) versionName = appVersionName
         validateVersionName(versionName)
